@@ -51,7 +51,7 @@ BGMと車体色は開始前のメニューで選ぶのが基本です。走行�
 
 4MiB ASCII16 ROM、R800、RAM 256KiB以上、V9968（256色EPAL・256KiB VRAM）、Geo3D V2、OPLL/MSX-MUSICが必要です。**内蔵98h版／外付け88h版**を別々に同梱しています。
 
-対応版openMSXで両版の全6ステージ完走を確認しました。岩トンネル付近で停止する不具合も修正済みです。追加の自動キー操作テストでは合計8回／12回の接触後も完走し、残り106秒／98秒でした。これは人の操作による平均難易度や実機性能を保証する数値ではありません。[検証記録](docs/final-demo-validation.json)・[衝突ありの記録](docs/collision-allowance.json)
+内蔵98h版・外付け88h版とも、対応版openMSXで全6ステージの完走を確認しています。
 
 実機・FPGA・BlueMSX+は未検証です。一般車の近距離表示などには粗さが残り、後方からの衝突判定はありません。処理速度は環境や場面で変化し、時計は競技記録用ではありません。順位を競うモードはありません。BIOS・エミュレーター・FPGAデータは同梱しません。
 
@@ -92,7 +92,7 @@ Choose music and color before starting; in-game changes are also available. Musi
 
 4MiB ASCII16 ROM, R800, at least 256KiB RAM, V9968 with 256-color EPAL and 256KiB VRAM, Geo3D V2, and OPLL/MSX-MUSIC. Separate internal-98h and external-88h editions are included.
 
-Both editions completed all six stages in compatible openMSX, taking approximately 12 minutes in the test drive. The canyon-tunnel freeze is fixed. Two additional automated keyboard-input runs finished with 8 and 12 contacts, leaving 106 and 98 seconds. These are limited automated tests, not a human-difficulty estimate or a hardware performance guarantee.
+Both internal-98h and external-88h editions have been tested through all six stages in compatible openMSX.
 
 Physical hardware, FPGA hardware and BlueMSX+ remain unverified. Close-up traffic rendering still has rough edges; collisions from behind are not implemented. Performance varies by scene and environment; the clock is not intended for competition timing. There is no competitive ranking mode. BIOS, emulators and FPGA firmware are not bundled.
 
