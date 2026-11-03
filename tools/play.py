@@ -1,7 +1,7 @@
 from pathlib import Path
 import argparse,os,shutil,subprocess
 R=Path(__file__).resolve().parents[1]
-p=argparse.ArgumentParser(description="Launch MAGICAL HAPPY RALLY 3D with a separately installed Geo3D V2 openMSX.")
+p=argparse.ArgumentParser(description="Launch MAGICAL HAPPY RACE 3D with a separately installed Geo3D V2 openMSX.")
 p.add_argument("--openmsx",default=os.environ.get("OPENMSX",shutil.which("openmsx")))
 p.add_argument("--external-88h",action="store_true")
 p.add_argument("--machine")
@@ -9,7 +9,7 @@ p.add_argument("--rom",type=Path)
 p.add_argument("--dry-run",action="store_true")
 a=p.parse_args()
 if a.machine is None:a.machine="Panasonic_FS-A1ST" if a.external_88h else "Panasonic_FS-A1ST_V9968"
-if a.rom is None:a.rom=R/"rom"/("MAGICAL_HAPPY_RALLY_3D_EXTERNAL_88H.rom" if a.external_88h else "MAGICAL_HAPPY_RALLY_3D.rom")
+if a.rom is None:a.rom=R/"rom"/("MAGICAL_HAPPY_RACE_3D_EXTERNAL_88H.rom" if a.external_88h else "MAGICAL_HAPPY_RACE_3D_INTERNAL_98H.rom")
 if not a.openmsx:p.error("Set OPENMSX to the compatible openMSX executable, or pass --openmsx.")
 e=Path(a.openmsx).resolve()
 if not e.is_file():p.error("openMSX executable not found")

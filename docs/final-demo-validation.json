@@ -1,0 +1,86 @@
+[
+  {
+    "variant": "internal98h",
+    "finished": true,
+    "elapsed_from_capture_seconds": 737.2,
+    "remaining_seconds": 123,
+    "contacts": 0,
+    "final_piece": 47,
+    "checkpoints": [
+      {
+        "piece": 8,
+        "elapsed_seconds": 122.8,
+        "before": 37,
+        "after": 177
+      },
+      {
+        "piece": 16,
+        "elapsed_seconds": 245.7,
+        "before": 54,
+        "after": 194
+      },
+      {
+        "piece": 24,
+        "elapsed_seconds": 368.6,
+        "before": 71,
+        "after": 211
+      },
+      {
+        "piece": 32,
+        "elapsed_seconds": 491.5,
+        "before": 88,
+        "after": 228
+      },
+      {
+        "piece": 40,
+        "elapsed_seconds": 614.3,
+        "before": 106,
+        "after": 245
+      }
+    ],
+    "rom_sha256": "bbd96fe66ef5dd3d2c5d2987b431f3e33c0fb50f4304b35f75b53608b621d21b",
+    "method": "Normal keyboard input, state-read automated driver; no position, time or traffic writes; emulator only"
+  },
+  {
+    "variant": "external88h",
+    "finished": true,
+    "elapsed_from_capture_seconds": 737.1,
+    "remaining_seconds": 123,
+    "contacts": 0,
+    "final_piece": 47,
+    "checkpoints": [
+      {
+        "piece": 8,
+        "elapsed_seconds": 122.8,
+        "before": 37,
+        "after": 177
+      },
+      {
+        "piece": 16,
+        "elapsed_seconds": 245.6,
+        "before": 54,
+        "after": 194
+      },
+      {
+        "piece": 24,
+        "elapsed_seconds": 368.5,
+        "before": 71,
+        "after": 211
+      },
+      {
+        "piece": 32,
+        "elapsed_seconds": 491.4,
+        "before": 88,
+        "after": 228
+      },
+      {
+        "piece": 40,
+        "elapsed_seconds": 614.3,
+        "before": 106,
+        "after": 245
+      }
+    ],
+    "rom_sha256": "453132bd8e9a6e0e6e419c34757c32b6cd75da5486ff8ce3ef76b0cd341023ab",
+    "method": "Normal keyboard input, state-read automated driver; no position, time or traffic writes; emulator only"
+  }
+]

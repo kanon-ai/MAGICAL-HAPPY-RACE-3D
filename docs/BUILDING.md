@@ -1,3 +1,27 @@
+# Source and reconstruction / ソースとROM再現
+
+## 最終デモ / Final demo
+
+`demo-source/src/` は現在のC・アセンブリ・生成済みヘッダー、`demo-source/tools/` は開発で使用した生成・ビルド・パッチ処理のソース資料です。開発ツールは過去の中間生成物やローカル構成に依存し、**この公開一式だけで最新版をソースから一括コンパイルできる環境には整理できていません**。
+
+The current C/assembly/generated headers are in `demo-source/src/`; development generation/build/patch sources are in `demo-source/tools/`. These tools depend on intermediate artifacts and local configurations. **This snapshot is not a self-contained, one-command source build of the final demo.**
+
+検証済みの最新版ROMは、保存した旧版ROMとハッシュ検証付き差分からバイト単位で再現できます。これはソースコンパイルではありません。
+
+The tested final ROMs can be reconstructed byte-for-byte from the preserved prior ROMs and checked deltas. This is binary reconstruction, not source compilation:
+
+```powershell
+python tools/reconstruct_demo.py
+```
+
+Outputs: `outputs/final-demo/`. Distributed ROMs are not overwritten. Code is MIT; embedded artwork, music, generated game data and ROM/delta data retain the asset terms.
+
+## 旧公開版のソースビルド / Historical source build
+
+以下は旧v0.1.1向けの手順です。ルートの `src/`、従来の `assets/`、`tools/build.py` は旧版保存用で、最新版にはなりません。旧ROMは `rom/legacy/` に保持しています。
+
+The root `src/`, historical assets and `tools/build.py` belong to v0.1.1, not the final demo. Prior ROMs are preserved in `rom/legacy/`.
+
 # ビルド / Building
 
 ## 日本語

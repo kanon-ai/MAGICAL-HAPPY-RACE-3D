@@ -1,6 +1,7 @@
 set auto_save_settings false
 set sound_driver SDL
 set mute off
+set PSG_volume 75
 set throttle on
 set speed 100
 set maxframeskip 0

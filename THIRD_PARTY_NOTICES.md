@@ -5,7 +5,7 @@
 - Geo3D: **Alex Moncks** — https://github.com/alexmoncks/V9968_Cartridge/tree/main/geo3d
 - Compatible emulator development: https://github.com/alexmoncks/openMSX
 - Build tools: **SDCC** (https://sdcc.sourceforge.net/) and **Pasmo** (https://pasmo.speccy.org/).
-- Music: **Costal Drive - OPLL arrangement**, volume-adjusted version. The title spelling follows the supplied data.
+- Music: **Arcade Rush**, **Costal Drive**, **Bossa Pixel**, arranged for OPLL; presented as BGM1–3 in the menu.
 
 ## 日本語
 

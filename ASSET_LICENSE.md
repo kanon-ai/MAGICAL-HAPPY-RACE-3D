@@ -2,6 +2,9 @@
 
 Version 1.0 — 2026-10-28
 
+同じ素材条件はdemo-source内の画像・音楽・生成済みゲームデータ、ROM再現用差分にも適用します。コードのMIT許諾は維持します。
+The same asset terms cover embedded artwork/music/generated game data in demo-source and ROM reconstruction deltas; code remains MIT.
+
 ## 日本語
 
 この条件は、権利者が許諾できる範囲で、assets/ の画像・音楽・コース等のデータ、media/ の映像・画像、rom/ の素材を含むROM全体に適用します。コード単体のMIT許諾を制限しません。
@@ -28,4 +31,4 @@ To the extent the rights holder can grant permission, these terms apply to image
 
 The README disclaimer applies. Contact the author through Issues in the official repository.
 
-Official repository: https://github.com/kanon-ai/MAGICAL-HAPPY-RALLY-3D
+Official repository: https://github.com/kanon-ai/MAGICAL-HAPPY-RACE-3D

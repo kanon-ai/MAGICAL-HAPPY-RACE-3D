@@ -1,0 +1,101 @@
+{
+  "runs": [
+    {
+      "quota": 1,
+      "terminal_mode": 4,
+      "remaining": 106,
+      "hits": 8,
+      "seconds": 753.5,
+      "rom_sha256": "bbd96fe66ef5dd3d2c5d2987b431f3e33c0fb50f4304b35f75b53608b621d21b",
+      "method": "State-read automated driver, keyboard only, no game-state writes",
+      "stages": [
+        {
+          "stage": 1,
+          "hits": 1,
+          "remaining_at_end": 35,
+          "stage_seconds": 124.8
+        },
+        {
+          "stage": 2,
+          "hits": 1,
+          "remaining_at_end": 50,
+          "stage_seconds": 124.8
+        },
+        {
+          "stage": 3,
+          "hits": 2,
+          "remaining_at_end": 63,
+          "stage_seconds": 127.0
+        },
+        {
+          "stage": 4,
+          "hits": 1,
+          "remaining_at_end": 78,
+          "stage_seconds": 125.0
+        },
+        {
+          "stage": 5,
+          "hits": 1,
+          "remaining_at_end": 93,
+          "stage_seconds": 124.9
+        },
+        {
+          "stage": 6,
+          "hits": 2,
+          "remaining_at_end": 106,
+          "stage_seconds": 127.0
+        }
+      ]
+    },
+    {
+      "quota": 2,
+      "terminal_mode": 4,
+      "remaining": 98,
+      "hits": 12,
+      "seconds": 761.7,
+      "rom_sha256": "bbd96fe66ef5dd3d2c5d2987b431f3e33c0fb50f4304b35f75b53608b621d21b",
+      "method": "State-read automated driver, keyboard only, no game-state writes",
+      "stages": [
+        {
+          "stage": 1,
+          "hits": 2,
+          "remaining_at_end": 33,
+          "stage_seconds": 126.8
+        },
+        {
+          "stage": 2,
+          "hits": 2,
+          "remaining_at_end": 46,
+          "stage_seconds": 127.0
+        },
+        {
+          "stage": 3,
+          "hits": 2,
+          "remaining_at_end": 59,
+          "stage_seconds": 126.9
+        },
+        {
+          "stage": 4,
+          "hits": 2,
+          "remaining_at_end": 72,
+          "stage_seconds": 127.0
+        },
+        {
+          "stage": 5,
+          "hits": 2,
+          "remaining_at_end": 85,
+          "stage_seconds": 127.0
+        },
+        {
+          "stage": 6,
+          "hits": 2,
+          "remaining_at_end": 98,
+          "stage_seconds": 127.0
+        }
+      ]
+    }
+  ],
+  "mean_remaining_seconds": 102.0,
+  "rom_changed": false,
+  "scope": "Two automated keyboard-input runs with deliberately targeted contacts. Not a statistical estimate of human difficulty."
+}

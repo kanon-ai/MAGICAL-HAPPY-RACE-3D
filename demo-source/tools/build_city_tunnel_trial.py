@@ -1,0 +1,41 @@
+"""Guarded rendering-only trial on the validated alpine baseline."""
+from pathlib import Path
+import subprocess, sys, os, re, json, hashlib
+R=Path(__file__).resolve().parents[1]
+subprocess.run([sys.executable,str(R/'tools/prepare_city_tunnel_trial.py')],check=True)
+sd=Path('C:/MSX/toolchain-workspace/work/toolchain/sdcc/bin/sdcc.exe')
+env=dict(os.environ);env['PATH']=str(sd.parent)+os.pathsep+env.get('PATH','')
+def off(a):return (1+(a-0x8000)//8192)*16384+8192+(a-0x8000)%8192
+for suffix in ('','-external-88h'):
+ w=R/('work/city-tunnel-trial'+suffix);w.mkdir(exist_ok=True)
+ (w/'gate_addresses.h').write_bytes((R/('work/tunnel-depth-fast'+suffix)/'gate_addresses.h').read_bytes())
+ subprocess.run([str(sd),'-mz80','--opt-code-size','--no-std-crt0','--code-loc','0x6000','--data-loc','0xf6f5','-Wl-b_HOME=0x7d00','-I',str(w),'-DROCK_ARCH','-DARCH_SERIES','-DARCH_LOD',str(R/'src/drive_city_tunnel_trial.c'),'-o',str(w/'gates.ihx')],env=env,check=True)
+ mem={}
+ for line in (w/'gates.ihx').read_text().splitlines():
+  b=bytes.fromhex(line[1:]);assert sum(b)%256==0
+  if b[3]==0:
+   a=int.from_bytes(b[1:3],'big')
+   for i,v in enumerate(b[4:-1]):
+    assert 0x6000<=a+i<0x8000 and a+i not in mem
+    mem[a+i]=v
+ mapping=(w/'gates.map').read_text()
+ def symbol(n):return int(re.search(r'([0-9A-F]{8})\s+_'+n+r'\s',mapping)[1],16)
+ src=R/('outputs/six-route-city-alpine-connected'+suffix);p=next(src.glob('*.rom'));old=p.read_bytes();rom=bytearray(old)
+ donor=next((R/('outputs/six-route-tunnel-depth-fast'+suffix)).glob('*.rom')).read_bytes()
+ bank=210*16384+8192;assert old[bank:bank+8192]==donor[bank:bank+8192]
+ assert old[off(0xb260):off(0xb260)+31]==donor[off(0xb260):off(0xb260)+31]
+ assert old[off(0xca23):off(0xca23)+3]==bytes.fromhex('cd60b2')
+ assert old[off(0xa94e)]==0xcd
+ rom[bank:bank+8192]=b'\xff'*8192
+ for a,v in mem.items():rom[bank+a-0x6000]=v
+ rom[off(0xa94f):off(0xa94f)+2]=symbol('draw_drive_gate').to_bytes(2,'little')
+ # Keep original object pass, then allow forest20 and city39/40 late drawing.
+ stub=bytes.fromhex('cda9bb3a4fe2fe142807fe272803fe28c0dde5fde53ed2320060cd')+symbol('draw_late_tunnel').to_bytes(2,'little')+bytes.fromhex('3efc320060fde1dde1c9')
+ assert len(stub)<0xb351-0xb260
+ rom[off(0xb260):off(0xb260)+len(stub)]=stub
+ changed=[i for i,(a,b) in enumerate(zip(old,rom)) if a!=b]
+ assert len(rom)==4194304 and all(bank<=i<bank+8192 or off(0xa94f)<=i<off(0xa94f)+2 or off(0xb260)<=i<off(0xb260)+len(stub) for i in changed)
+ out=R/('outputs/six-route-city-tunnel-trial'+suffix);out.mkdir(exist_ok=True);(out/p.name).write_bytes(rom)
+ for f in src.glob('*.bin'):(out/f.name).write_bytes(f.read_bytes())
+ report=dict(bytes=len(rom),sha256=hashlib.sha256(rom).hexdigest(),code_bytes=len(mem),changed_bytes=len(changed),native_verified=False,adopted=False,scope='Geometry-only city boundary tunnel; exit sky concealment and visual review pending.')
+ (out/'manifest.json').write_text(json.dumps(report,indent=2));print(report)

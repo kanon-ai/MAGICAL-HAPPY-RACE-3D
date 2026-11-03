@@ -1,0 +1,470 @@
+/* World-anchored checkpoint gates. No checkpoint or simulation writes. */
+#include <stdint.h>
+#include "gate_addresses.h"
+__sfr __at(GEO_INDEX) gi;
+__sfr __at(GEO_DATA) gd;
+typedef struct { int16_t x,y,w; uint8_t clip; } Plane;
+static const uint16_t depth[16]={28,32,36,42,50,60,72,86,102,124,150,184,230,292,380,512};
+/* Signed 16 x unsigned 16, exact 32-bit result in SDCC HL:DE. */
+static int32_t scale_product(int16_t value,uint16_t numerator) __naked {
+ value;numerator;
+ __asm
+ ld b,d
+ ld c,e
+ ld a,h
+ push af
+ bit 7,h
+ jr z,scale_product_mul
+ xor a
+ sub l
+ ld l,a
+ sbc a,a
+ sub h
+ ld h,a
+scale_product_mul:
+ .db 0xed,0xc3
+ pop af
+ bit 7,a
+ jr z,scale_product_done
+ xor a
+ sub l
+ ld l,a
+ ld a,#0
+ sbc a,h
+ ld h,a
+ ld a,#0
+ sbc a,e
+ ld e,a
+ ld a,#0
+ sbc a,d
+ ld d,a
+scale_product_done:
+ ex de,hl
+ ret
+ __endasm;
+}
+/* SDCC call1: dividend HL:DE, divisor on stack. Preconditions:
+   high word < divisor <=32767, so quotient fits16 and remainder shifts fit16. */
+static uint16_t scale_divide(uint32_t dividend,uint16_t divisor) __naked {
+ dividend;divisor;
+ __asm
+ push ix
+ ld ix,#0
+ add ix,sp
+ ld c,4(ix)
+ ld b,5(ix)
+ ld a,#16
+scale_div_loop:
+ sla e
+ rl d
+ adc hl,hl
+ or a
+ sbc hl,bc
+ jr nc,scale_div_bit
+ add hl,bc
+ jr scale_div_next
+scale_div_bit:
+ inc e
+scale_div_next:
+ dec a
+ jr nz,scale_div_loop
+ pop ix
+ pop hl
+ pop bc
+ jp (hl)
+ __endasm;
+}
+static int16_t scale(int16_t value,uint16_t numerator,uint16_t denominator){
+ int32_t product=scale_product(value,numerator);
+ uint32_t magnitude=product<0?-product:product;
+ uint16_t quotient;
+ if(denominator>32767 || (magnitude>>16)>=denominator)return product/denominator;
+ quotient=scale_divide(magnitude,denominator);
+ return product<0?-(int16_t)quotient:(int16_t)quotient;
+}
+static void project(int16_t gap,Plane *p){
+ uint16_t at=gap<28?28:(gap>512?512:gap),part,span;
+ uint8_t k=TRAFFIC_LUT[at],*a,*b,raw;
+ int16_t cx,y,w,horizon;
+ if(at<depth[k]&&k)--k;
+ a=PROFILE+192+((uint16_t)k<<2);cx=(int8_t)a[0];y=a[1];w=a[2];p->clip=a[3];
+ if(k<15){b=a+4;part=at-depth[k];span=depth[k+1]-depth[k];
+  cx+=LERP((int8_t)b[0]-cx,part,span);y+=LERP((int16_t)b[1]-y,part,span);w+=LERP((int16_t)b[2]-w,part,span);}
+ raw=w;horizon=PROFILE[123];
+ if(CAMERA){cx=VIEW_X(128+cx,raw)-128;y=VIEW_Y(y,raw);p->clip=p->clip>=168?BOTTOM:VIEW_Y(p->clip,raw);w=VIEW_W(raw);horizon=VIEW_Y(horizon,0);}
+ cx-=CAMERA_SHIFT((uint8_t)w>>1);
+ if(gap<28 || gap>512){uint16_t offset=CAMERA?60:0,den=gap+offset;
+  if((int16_t)den<4)den=4;
+  cx=scale(cx,at+offset,den);y=horizon+scale(y-horizon,at+offset,den);w=scale(w,at+offset,den);}
+ p->x=128+cx;p->y=y;p->w=w;if(p->clip>BOTTOM)p->clip=BOTTOM;
+}
+static void vertex(int16_t x,int16_t y){gd=x;gd=x>>8;y=-y;gd=y;gd=y>>8;gd=1;gd=0;}
+static void rect_vertices(int16_t x,int16_t y,int16_t right,int16_t bottom){vertex(x,y);vertex(right,y);vertex(right,bottom);vertex(x,bottom);}
+static void face(uint8_t base,uint8_t color){gd=base;gd=base+1;gd=base+2;gd=base+3;gd=0;gd=0;gd=0;gd=0;gd=0;gd=0;gd=color;}
+#ifdef ROCK_ARCH
+#include "rock_arch_model.h"
+#include "rock_arch_streams.h"
+#include "tunnel_inset_streams.h"
+static void stream_faces(const uint8_t *p) __z88dk_fastcall __naked {
+ p;
+ __asm
+ ld c,#GEO_DATA
+ ld b,#176
+ otir
+ ret
+ __endasm;
+}
+static void stream_uv(const uint8_t *p) __z88dk_fastcall __naked {
+ p;
+ __asm
+ ld c,#GEO_DATA
+ ld b,#128
+ otir
+ ret
+ __endasm;
+}
+#ifdef ARCH_LOD
+static void stream_far_faces(const uint8_t *p) __z88dk_fastcall __naked {
+ p;
+ __asm
+ ld c,#GEO_DATA
+ ld b,#88
+ otir
+ ret
+ __endasm;
+}
+static void stream_far_uv(const uint8_t *p) __z88dk_fastcall __naked {
+ p;
+ __asm
+ ld c,#GEO_DATA
+ ld b,#64
+ otir
+ ret
+ __endasm;
+}
+#endif
+/* Exact truncation toward zero without a 32-bit multiply for every vertex.
+   Model magnitude <=136; projected width <=4096: both products fit 16 bits. */
+/* SDCC call1: signed value HL, positive width DE, result DE.
+   magnitude<=136,width<=4096 => product<2^24, exact Q6 truncation. */
+static int16_t arch_coord(int16_t value,uint16_t width) __naked {
+ value;width;
+ __asm
+ ld b,d
+ ld c,e
+ ld a,h
+ push af
+ bit 7,h
+ jr z,arch_mul
+ xor a
+ sub l
+ ld l,a
+ sbc a,a
+ sub h
+ ld h,a
+arch_mul:
+ .db 0xed,0xc3
+ add hl,hl
+ rl e
+ add hl,hl
+ rl e
+ ld l,h
+ ld h,e
+ ex de,hl
+ pop af
+ bit 7,a
+ ret z
+ xor a
+ sub e
+ ld e,a
+ sbc a,a
+ sub d
+ ld d,a
+ ret
+ __endasm;
+}
+/* Draw only visible faces, from the far portal to the near portal. */
+static void draw_rock_shell(int16_t gap,int16_t halfdepth){
+ Plane nearp,farp;uint8_t i;int16_t x,y;const int16_t *v;
+ #ifdef ARCH_LOD
+ uint8_t distant=gap>512 && halfdepth<=24;
+ const uint8_t *front=halfdepth>24?tunnel_faces_front:arch_faces_front;
+ const uint8_t *back=halfdepth>24?tunnel_faces_back:arch_faces_back;
+ project(halfdepth>24 && gap-halfdepth < (CAMERA?-44:16) ? (CAMERA?-44:16) : gap-halfdepth,&nearp);
+ if(!distant)project(gap+halfdepth,&farp);
+ if(nearp.w>4096 || (distant?nearp.w:farp.w)<2)return;
+ #else
+ project(halfdepth>24 && gap-halfdepth < (CAMERA?-44:16) ? (CAMERA?-44:16) : gap-halfdepth,&nearp);project(gap+halfdepth,&farp);
+ if(nearp.w>4096 || farp.w<2)return;
+ #endif
+ if(halfdepth>24)TEX_WINDOW(192,754,255,767);else TEX_WINDOW(0,768,127,831);
+ WORD(24,1);WORD(26,0);WORD(28,0);WORD(30,1);WORD(34,nearp.clip);
+ WORD(0x60,halfdepth>24?192:0);WORD(0x62,halfdepth>24?754:768);gi=0x64;gd=0;
+ gi=0x68;gd=0;gi=0x6c;gd=0;gi=0x6e;gd=0;gi=0x6f;gd=0;
+ gi=0x40;gd=180;gi=0x50;
+ #ifdef ARCH_LOD
+ for(i=0;i<(distant?18:36);++i){Plane *p=i<18?&nearp:&farp;v=rock_arch_vertices[i];
+ #else
+ for(i=0;i<36;++i){Plane *p=i<18?&nearp:&farp;v=rock_arch_vertices[i];
+ #endif
+  x=p->x+arch_coord(v[0],p->w);y=p->y-arch_coord(v[1],p->w);vertex(x,y);}
+ gi=0x58;gd=150;gi=0x52;
+ #ifdef ARCH_LOD
+ if(distant)stream_far_faces(front+88);else
+ #endif
+ stream_faces(gap-halfdepth+(CAMERA?60:0)>4?front:back);
+ gi=0x65;gd=150;gi=0x53;
+ #ifdef ARCH_LOD
+ if(distant)stream_far_uv(arch_uv+64);else
+ #endif
+ stream_uv(halfdepth>24?tunnel_uv:arch_uv);
+ WORD(0x54,180);WORD(0x56,150);gi=0x42;gd=36;gi=0x59;gd=16;gi=0x45;gd=0;WORD(0x46,(uint16_t)PAGE<<8);
+ #ifdef ARCH_LOD
+ if(distant){gi=0x42;gd=18;gi=0x59;gd=8;}
+ #endif
+ gi=0x48;gd=7;while(gi&1)POLL();
+ /* ARCH_GPU_DONE */
+ WORD(0x54,0);WORD(0x56,0);
+}
+#endif
+
+
+/* HL=Plane. Same Q6 coordinates and vertex order, avoiding C loop spills. */
+static void lining_ring(Plane *p) __z88dk_fastcall __naked {
+ p;
+ __asm
+ push ix
+ push iy
+ push hl
+ pop ix
+ ld iy,#(_rock_arch_vertices+54)
+ ld b,#9
+ring_loop:
+ push bc
+ ld l,0(iy)
+ ld h,1(iy)
+ ld e,4(ix)
+ ld d,5(ix)
+ call _arch_coord
+ ld l,0(ix)
+ ld h,1(ix)
+ add hl,de
+ ld a,l
+ out (_gd),a
+ ld a,h
+ out (_gd),a
+ ld l,2(iy)
+ ld h,3(iy)
+ ld e,4(ix)
+ ld d,5(ix)
+ call _arch_coord
+ ld l,2(ix)
+ ld h,3(ix)
+ ex de,hl
+ or a
+ sbc hl,de
+ ld a,l
+ out (_gd),a
+ ld a,h
+ out (_gd),a
+ ld a,#1
+ out (_gd),a
+ xor a
+ out (_gd),a
+ ld de,#6
+ add iy,de
+ pop bc
+ djnz ring_loop
+ pop iy
+ pop ix
+ ret
+ __endasm;
+}
+static void terrain_ring(Plane *p,const int16_t *v) __naked {
+ p;v;
+ __asm
+ push ix
+ push iy
+ push hl
+ pop ix
+ push de
+ pop iy
+ ld b,#9
+terrain_ring_loop:
+ push bc
+ ld l,0(iy)
+ ld h,1(iy)
+ ld e,4(ix)
+ ld d,5(ix)
+ call _arch_coord
+ ld l,0(ix)
+ ld h,1(ix)
+ add hl,de
+ ld a,l
+ out (_gd),a
+ ld a,h
+ out (_gd),a
+ ld l,2(iy)
+ ld h,3(iy)
+ ld e,4(ix)
+ ld d,5(ix)
+ call _arch_coord
+ ld l,2(ix)
+ ld h,3(ix)
+ ex de,hl
+ or a
+ sbc hl,de
+ ld a,l
+ out (_gd),a
+ ld a,h
+ out (_gd),a
+ ld a,#1
+ out (_gd),a
+ xor a
+ out (_gd),a
+ ld de,#4
+ add iy,de
+ pop bc
+ djnz terrain_ring_loop
+ pop iy
+ pop ix
+ ret
+ __endasm;
+}
+/* World-fixed 4 m lining slices. Clip geometry and depth UV together. */
+static uint8_t draw_lining_slice(int16_t zn,int16_t zf,Plane *shared,uint8_t valid){
+ Plane a,b;int16_t clipz=CAMERA?-44:16,original=zn;uint8_t i,vnear=4,nearbase=valid==1?189:180,farbase=valid==1?180:189;
+ if(zf<=clipz)return valid;
+ if(zn<clipz){zn=clipz;vnear=4+(uint16_t)(zn-original)*5/64;}
+ project(zn,&a);if(valid)b=*shared;else project(zf,&b);*shared=a;if(a.w>4096||b.w<2)return 1;
+ TEX_WINDOW(192,754,255,767);
+ WORD(24,1);WORD(26,0);WORD(28,0);WORD(30,1);WORD(34,a.clip);
+ WORD(0x60,192);WORD(0x62,754);gi=0x64;gd=0;
+ gi=0x68;gd=0;gi=0x6c;gd=0;gi=0x6e;gd=0;gi=0x6f;gd=0;
+ if(!valid){gi=0x40;gd=farbase;gi=0x50;lining_ring(&b);}
+ gi=0x40;gd=nearbase;gi=0x50;lining_ring(&a);
+ gi=0x58;gd=150;gi=0x52;
+ for(i=0;i<8;++i){gd=nearbase+i;gd=nearbase+1+i;gd=farbase+1+i;gd=farbase+i;
+  gd=0;gd=0;gd=0;gd=0;gd=0;gd=0;gd=128;}
+ gi=0x65;gd=150;gi=0x53;
+ for(i=0;i<8;++i){gd=8;gd=vnear;gd=55;gd=vnear;gd=55;gd=9;gd=8;gd=9;}
+ WORD(0x54,180);WORD(0x56,150);gi=0x42;gd=18;gi=0x59;gd=8;
+ gi=0x45;gd=0;WORD(0x46,(uint16_t)PAGE<<8);gi=0x48;gd=7;
+ while(gi&1)POLL();WORD(0x54,0);WORD(0x56,0);return valid==1?2:1;
+}
+
+void draw_drive_gate(void){
+ int16_t gap,left,right,top,beam,thick;uint8_t goal;Plane p;
+ if(MODE!=1&&MODE!=2&&MODE!=4)return;
+ #ifdef ROCK_ARCH
+ #ifdef ARCH_SERIES
+ if(PIECE==12){uint8_t arch;
+  /* Far to near; 64 m spacing, at most two portals in the draw window. */
+  for(arch=4;arch;){--arch;gap=6144+((uint16_t)arch<<10)-DISTANCE;
+   if(gap<=1400 && gap>(CAMERA?-84:-24))draw_rock_shell(gap,24);
+  }
+  return;}
+ #else
+ if(PIECE==12){gap=8192-DISTANCE;
+  if(gap<=2048 && gap>(CAMERA?-84:-24))draw_rock_shell(gap,24);
+  return;}
+ #endif
+#endif
+ if((PIECE&7)==7){gap=16384-DISTANCE;if(gap>2048)return;goal=PIECE==47;}
+ else if(CAMERA && PIECE && !(PIECE&7) && DISTANCE<56){gap=-(int16_t)DISTANCE;goal=0;}
+ else return;
+ project(gap,&p);if(p.w<2||p.w>2048)return;
+ /* Supports begin beyond the paved shoulder; 5.4m head clearance. */
+ left=p.x-p.w*3/2;right=p.x+p.w*3/2;thick=p.w/8;if(!thick)thick=1;
+ top=p.y-p.w*15/8;beam=p.y-p.w*3/2;
+ if(PIECE==39){left=p.x-p.w*3/4;right=p.x+p.w*3/4;top=p.y-p.w*11/8;beam=p.y-p.w*9/8;}
+ if(top>=p.clip || p.y<0)return;
+ TEX_WINDOW(goal?64:0,650,goal?127:63,657);
+ WORD(24,1);WORD(26,0);WORD(28,0);WORD(30,1);WORD(34,p.clip);
+ WORD(0x60,goal?64:0);WORD(0x62,650);gi=0x64;gd=0;
+ gi=0x68;gd=0;gi=0x6c;gd=0;gi=0x6e;gd=0;gi=0x6f;gd=0;
+ gi=0x40;gd=210;gi=0x50;
+ rect_vertices(left-thick,top,left,p.y);rect_vertices(right,top,right+thick,p.y);rect_vertices(left-thick,top,right+thick,beam);
+ gi=0x58;gd=150;gi=0x52;face(210,15);face(214,14);face(218,128);
+ gi=0x65;gd=152;gi=0x53;gd=0;gd=0;gd=63;gd=0;gd=63;gd=7;gd=0;gd=7;
+ WORD(0x54,210);WORD(0x56,150);gi=0x42;gd=12;gi=0x59;gd=3;gi=0x45;gd=0;WORD(0x46,(uint16_t)PAGE<<8);
+ if(PIECE==39){WORD(0x54,218);WORD(0x56,152);gi=0x42;gd=4;gi=0x59;gd=1;}
+ gi=0x48;gd=7;while(gi&1)POLL();
+ WORD(0x54,0);WORD(0x56,0);
+}
+
+/* Draw after roadside objects and beacons, before the player and HUD.
+   Road opening remains transparent; walls cover exterior scenery. */
+
+/* Grounded embankment: portal rim in front, broad crest at tunnel exit. */
+static void draw_tunnel_embankment(int16_t gap){
+ static const int16_t terrain_vertices[45][2]={{-128,0},{-118,52},{-91,96},{-49,126},{0,136},{49,126},{91,96},{118,52},{128,0},{-546,0},{-418,84},{-283,139},{-141,157},{10,172},{156,172},{298,142},{433,74},{546,0},{-964,0},{-719,116},{-475,183},{-234,188},{20,208},{264,218},{505,188},{749,96},{964,0},{-1382,0},{-1019,148},{-667,226},{-327,219},{30,244},{372,264},{712,234},{1064,118},{1382,0},{-1800,0},{-1320,180},{-860,270},{-420,250},{40,280},{480,310},{920,280},{1380,140},{1800,0}};
+ static const uint8_t colors[8]={27,5,5,42,41,5,27,27};
+ Plane a,b,rings[5];uint8_t i,j,k,step=(PIECE==39 && gap>1656)?4:1,faces=step==4?8:32;int16_t x,y;
+ if(gap-256+(CAMERA?60:0)<=16)return;
+ project(gap-256,&a);project(gap-256,&b);if(a.w>4096||b.w<2)return;
+ for(i=0;i<5;i+=step)project(gap-256+(uint16_t)i*64,&rings[i]);
+ TEX_WINDOW(240,738,255,753);WORD(0x60,240);WORD(0x62,738);gi=0x64;gd=0;
+ WORD(24,1);WORD(26,0);WORD(28,0);WORD(30,1);WORD(34,a.clip);
+ gi=0x68;gd=0;gi=0x6c;gd=0;gi=0x6e;gd=0;gi=0x6f;gd=0;
+ gi=0x40;gd=180;gi=0x50;
+ for(i=0;i<5;i+=step)terrain_ring(&rings[i],terrain_vertices[i*9]);
+ gi=0x58;gd=150;gi=0x52;
+ j=180;for(i=0;i<faces;++i){gd=j;gd=j+9;gd=j+10;gd=j+1;
+  gd=0;gd=0;gd=0;gd=0;gd=0;gd=0;gd=128;++j;if((i&7)==7)++j;}
+ gi=0x65;gd=150;gi=0x53;
+ for(i=0;i<faces;++i){gd=4;gd=4;gd=4;gd=11;gd=11;gd=11;gd=11;gd=4;}
+ WORD(0x54,180);WORD(0x56,150);gi=0x42;gd=step==4?18:45;gi=0x59;gd=faces;
+ gi=0x45;gd=0;WORD(0x46,(uint16_t)PAGE<<8);gi=0x48;gd=7;
+ while(gi&1)POLL();WORD(0x54,0);WORD(0x56,0);
+}
+/* Boundary-spanning city tunnel; local road samples bend the lining.
+ * This geometry trial does not yet conceal the panorama through its exit. */
+static void draw_city_tunnel(void){
+ int16_t progress,entrance,exitgap,z,nearz,farz,car_gap;
+ uint8_t n,id,valid=0;Plane shared;
+ if(PIECE!=39 && PIECE!=40)return;
+ if(MODE!=1&&MODE!=2&&MODE!=4)return;
+ progress=PIECE==39?(int16_t)DISTANCE-13312:(int16_t)DISTANCE+3072;
+ entrance=-progress;exitgap=6144-progress;
+ if(entrance>4096 || exitgap<-(CAMERA?60:0))return;
+ if(entrance>16)draw_tunnel_embankment(entrance+256);
+ if(entrance<=1400 && entrance>-(CAMERA?92:32))draw_rock_shell(entrance,32);
+ /* World anchored 64-unit cells; only the near road's sampled depth is used. */
+ for(n=10;n;){
+  --n;z=((progress+32)&63);nearz=(int16_t)n*64-64-z;
+  farz=nearz+64;
+  if(nearz>512 || farz<entrance || nearz>exitgap)continue;
+  if(nearz<entrance)nearz=entrance;
+  if(farz>exitgap)farz=exitgap;
+  if(farz>512)farz=512;
+  if(nearz>=farz)continue;
+  valid=draw_lining_slice(nearz,farz,&shared,valid);
+ }
+ if(PIECE==39)draw_drive_gate();
+ for(n=0;n<5;++n){
+  id=((uint8_t *)59555)[n];car_gap=((uint16_t *)59500)[id]&16383;
+  if(car_gap&8192)car_gap-=16384;
+  if(car_gap<exitgap)((void (*)(uint8_t))11298)(id);
+ }
+}
+void draw_late_tunnel(void){
+ if(PIECE==39 || PIECE==40){draw_city_tunnel();return;}
+ int16_t gap;
+ if(PIECE!=20 || (MODE!=1&&MODE!=2&&MODE!=4))return;
+ gap=8192-DISTANCE;
+ if(gap<=1400 && gap>-(256+(CAMERA?60:0))){
+  uint8_t n,id,valid=0;int16_t car_gap;Plane shared;
+  draw_tunnel_embankment(gap);
+  draw_rock_shell(gap,256);
+  for(n=8;n;){--n;if((int16_t)(gap-256+((uint16_t)n<<6))+(CAMERA?60:0)>256)continue;valid=draw_lining_slice(gap-256+((uint16_t)n<<6),gap-192+((uint16_t)n<<6),&shared,valid);}
+  /* Re-submit only cars in front of the exit, far to near. Cars beyond
+     the exit retain the wall mask from the first scenery/traffic pass. */
+  for(n=0;n<5;++n){
+   id=((uint8_t *)59555)[n];
+   car_gap=((uint16_t *)59500)[id]&16383;
+   if(car_gap&8192)car_gap-=16384;
+   if(car_gap<gap+256)((void (*)(uint8_t))11298)(id);
+  }
+ }
+}

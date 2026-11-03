@@ -34,10 +34,10 @@ $env:OPENMSX = "C:/path/to/compatible-openmsx/openmsx.exe"
 展開先をカレントディレクトリにして実行します。
 
 ```powershell
-& "C:/path/to/compatible-openmsx/openmsx.exe" -machine Panasonic_FS-A1ST_V9968 -ext geo3d -cart rom/MAGICAL_HAPPY_RALLY_3D.rom -romtype ASCII16 -script tools/play.tcl
+& "C:/path/to/compatible-openmsx/openmsx.exe" -machine Panasonic_FS-A1ST_V9968 -ext geo3d -cart rom/MAGICAL_HAPPY_RACE_3D_INTERNAL_98H.rom -romtype ASCII16 -script tools/play.tcl
 ```
 
-メニューでSpace、加速はSpace/↑、操舵は←/→、ブレーキはX/↓、視点切替はCです。初期視点は運転席です。Escでポーズ／復帰、ポーズ中Xでメニューに戻ります。
+タイトルでSpace、メニューでは1/2/3でBGM、5/6/7/8で車体色を選択。Spaceで開始。加速はSpace/↑、操舵は←/→、ブレーキはX/↓、視点切替はCです。初期視点は運転席です。Escでポーズ／復帰、ポーズ中Xでメニューに戻ります。
 
 ### 起動しないとき
 
@@ -69,7 +69,7 @@ Or set `$env:OPENMSX` to that executable path and run `.\PLAY.cmd`. Replace the 
 Without Python, run openMSX directly from the extracted directory:
 
 ```powershell
-& "C:/path/to/compatible-openmsx/openmsx.exe" -machine Panasonic_FS-A1ST_V9968 -ext geo3d -cart rom/MAGICAL_HAPPY_RALLY_3D.rom -romtype ASCII16 -script tools/play.tcl
+& "C:/path/to/compatible-openmsx/openmsx.exe" -machine Panasonic_FS-A1ST_V9968 -ext geo3d -cart rom/MAGICAL_HAPPY_RACE_3D_INTERNAL_98H.rom -romtype ASCII16 -script tools/play.tcl
 ```
 
 Press Space to start. Space/Up accelerates, Left/Right steers, X/Down brakes and C switches camera. The default is cockpit view. Esc pauses/resumes; X while paused returns to the menu.
@@ -83,7 +83,7 @@ No hardware flashing instructions are provided. This release's physical hardware
 
 ## 外付けV9968版（88h） / External V9968 edition (88h)
 
-内蔵98h版と外付け88h版を別のROMで提供します。外付け版は `rom/MAGICAL_HAPPY_RALLY_3D_EXTERNAL_88H.rom` です。**V9968は88h〜8Ch、Geo3D V2は8Dh/8Fh**を使用します。実機では外付けV9968側の映像出力を使用する構成です。ただし、この公開ROMの実機・FPGA・BlueMSX+での動作は未検証です。
+内蔵98h版と外付け88h版を別のROMで提供します。外付け版は `rom/MAGICAL_HAPPY_RACE_3D_EXTERNAL_88H.rom` です。**V9968は88h〜8Ch、Geo3D V2は8Dh/8Fh**を使用します。実機では外付けV9968側の映像出力を使用する構成です。ただし、この公開ROMの実機・FPGA・BlueMSX+での動作は未検証です。
 
 対応版openMSXで `Panasonic_FS-A1ST`、`HRA_V9968`、`geo3d88` を使用します。通常のMSX本体側VDPと外付けV9968が共存します。`geo3d88` は外付けVDP（V9968）に接続する設定が必要です。
 
@@ -96,7 +96,7 @@ python tools/play.py --external-88h --openmsx "C:/path/to/compatible-openmsx/ope
 Pythonを使わない場合 / Without Python:
 
 ```powershell
-& "C:/path/to/compatible-openmsx/openmsx.exe" -machine Panasonic_FS-A1ST -ext HRA_V9968 -ext geo3d88 -cart rom/MAGICAL_HAPPY_RALLY_3D_EXTERNAL_88H.rom -romtype ASCII16 -script tools/play-external.tcl
+& "C:/path/to/compatible-openmsx/openmsx.exe" -machine Panasonic_FS-A1ST -ext HRA_V9968 -ext geo3d88 -cart rom/MAGICAL_HAPPY_RACE_3D_EXTERNAL_88H.rom -romtype ASCII16 -script tools/play-external.tcl
 ```
 
 If the screen shows the host MSX instead of the game, select **V9968** as openMSX's video source. The provided external launcher does this automatically. Required machine and extension definitions must be supplied by your compatible emulator installation.
